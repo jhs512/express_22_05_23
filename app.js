@@ -26,11 +26,10 @@ app.use(cors(corsOptions));
 
 const port = 3000;
 
-app.patch("/todos/:id", async (req, res) => {
-  //const id = req.params.id;
+app.delete("/todos/:id", async (req, res) => {
   const { id } = req.params;
 
-  const [rows] = await pool.query(
+  const [[todoRow]] = await pool.query(
     `
     SELECT *
     FROM todo
@@ -39,7 +38,40 @@ app.patch("/todos/:id", async (req, res) => {
     [id]
   );
 
-  if (rows.length == 0) {
+  if (todoRow === undefined) {
+    res.status(404).json({
+      msg: "not found",
+    });
+    return;
+  }
+
+  const [rs] = await pool.query(
+    `
+    DELETE FROM todo
+    WHERE id = ?
+    `,
+    [id]
+  );
+
+  res.json({
+    msg: `${id}번 할일이 삭제되었습니다.`,
+  });
+});
+
+app.patch("/todos/:id", async (req, res) => {
+  //const id = req.params.id;
+  const { id } = req.params;
+
+  const [[todoRow]] = await pool.query(
+    `
+    SELECT *
+    FROM todo
+    WHERE id = ?
+    `,
+    [id]
+  );
+
+  if (todoRow === undefined) {
     res.status(404).json({
       msg: "not found",
     });
@@ -74,6 +106,38 @@ app.patch("/todos/:id", async (req, res) => {
 
   res.json({
     msg: `${id}번 할일이 수정되었습니다.`,
+  });
+});
+
+app.post("/todos", async (req, res) => {
+  const { perform_date, content } = req.body;
+
+  if (!perform_date) {
+    res.status(400).json({
+      msg: "perform_date required",
+    });
+    return;
+  }
+
+  if (!content) {
+    res.status(400).json({
+      msg: "content required",
+    });
+    return;
+  }
+
+  const [rs] = await pool.query(
+    `
+    INSERT INTO todo
+    SET reg_date = NOW(),
+    perform_date = ?,
+    content = ?
+    `,
+    [perform_date, content]
+  );
+
+  res.json({
+    msg: `${rs.insertId}번 할일이 수정되었습니다.`,
   });
 });
 
